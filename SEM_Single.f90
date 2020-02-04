@@ -29,7 +29,7 @@ DOUBLE PRECISION, DIMENSION(:) :: VEL_AVERAGE(3),VEL2_AVERAGE(6),VEL3_AVERAGE(3)
                                   VEL3_AVERAGE_DEF(3),VEL4_AVERAGE_DEF(3)
 DOUBLE PRECISION, DIMENSION(:,:) :: R(3,3)
 INTEGER ::          DIVY       ,DIVZ       ,IY         ,IZ         ,II          ,N          ,IT         ,ITMAX     ,&
-                    P          ,INDIX      ,POST_PROCESSING, IDXY, IDXZ
+                    P          ,INDIX      ,POST_PROCESSING, IDXY, IDXZ, KIDX
 INTEGER :: MYRANK,SIZE_MPI,IERR,N_part,nseed
 INTEGER, ALLOCATABLE :: seed(:)
 CHARACTER*43::      FILETEST1  ,FILETEST2  ,FILETEST3  ,FILETEST4  ,FILETEST5  ,FILETEST6  ,FILETEST7  ,FILETEST8  ,&
@@ -210,9 +210,12 @@ DO IT=1,ITMAX
 
 !------BEGINNING OF SPATIAL ITERATION
 
-  DO IY = 1,DIVY
-    DO IZ = 1,DIVZ
+  !DO IY = 1,DIVY
+  !  DO IZ = 1,DIVZ
+   DO KIDX = 1, DIVY*DIVZ     
 
+       IY = MOD(KIDX-1,DIVY)+1
+       IZ = (KIDX-1)/DIVY + 1
        !X_POINT = GRID POINT COORDINATES
        X_POINT = (/ 0.0D0, (IY-1) * L/(DIVY -1) + YMIN, (IZ-1) * L/(DIVZ-1)+ ZMIN /)
 
@@ -237,7 +240,7 @@ DO IT=1,ITMAX
       V(IY,IZ,:) = (V(IY,IZ,:) / SQRT(ENNE)) + U(:)
 
 
-    END DO
+  ! END DO
   END DO
 
 !------END OF SPATIAL ITERATIONS

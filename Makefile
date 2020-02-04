@@ -1,13 +1,13 @@
 # Start of the makefile
 # Defining variables
-objects = SEM_test.o
+objects = SEM_Single.o
 f90comp = gfortran
 switch = -O3
 # Makefile
 execname: $(objects)
 	$(f90comp) -o execname $(switch) $(objects)
 
-main.o:	SEM_test.f90
+main.o:	SEM_Single.f90
 	$(f90comp) -c $(switch) SEM_test.f90
 
 %.o: %.f90
