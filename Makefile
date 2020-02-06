@@ -4,20 +4,25 @@ objects = MatrixOperations.o SEM_Single.o
 f90comp = gfortran
 switch = -O3
 # Makefile
-execname: $(objects)
-	$(f90comp) -o execname $(switch) $(objects)
+SEM_Single: $(objects)
+	$(f90comp) -o SEM_Single $(switch) $(objects)
+DFSEM_Single: MatrixOperations.o DFSEM_Single.o
+	$(f90comp) -o DFSEM_Single $(switch) MatrixOperations.o DFSEM_Single.o
 MatrixOperations.mod: MatrixOperations.o MatrixOperations.f90
 	$(f90comp) -c $(switch) MatrixOperations.f90
 MatrixOperations.o: MatrixOperations.f90
 	$(f90comp) -c $(switch) MatrixOperations.f90
-main.o:	MatrixOperations.mod SEM_Single.f90
-	$(f90comp) -c $(switch) SEM_test.f90
+SEM_Single.o: MatrixOperations.mod SEM_Single.f90
+	$(f90comp) -c $(switch) SEM_Single.f90
+DFSEM_Single.o: MatrixOperations.mod DFSEM_Single.f90
+	$(f90comp) -c $(switch) DFSEM_Single.f90
 
 %.o: %.f90
 	$(f90comp) -c $(switch) $<
 # Cleaning everything
 clean: 
 	rm $(objects)
-	rm execname
+	rm SEM_Single
+	rm DFSEM_Single
 	rm *.dat
 # End of the makefile
