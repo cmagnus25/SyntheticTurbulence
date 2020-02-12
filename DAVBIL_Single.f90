@@ -35,12 +35,13 @@ DOUBLE PRECISION, DIMENSION(:) :: VEL_AVERAGE(3),VEL2_AVERAGE(6),VEL3_AVERAGE(3)
 DOUBLE PRECISION, DIMENSION(:,:) :: R(3,3), ROT(3,3),ROTT(3,3), TMPMAT(3,3)
 INTEGER :: DIVY       ,DIVZ       ,IY         ,IZ         ,II          ,N          ,IT         ,ITMAX     ,&
                     P          ,INDIX      ,POST_PROCESSING, IDXY, IDXZ, KIDX
-INTEGER :: MYRANK,SIZE_MPI,IERR,N_part,nseed, stat = 0
+INTEGER :: MYRANK,SIZE_MPI,IERR,N_part,nseed, stat = 0, I, J
 INTEGER, ALLOCATABLE :: seed(:)
 CHARACTER*43::      FILETEST1  ,FILETEST2  ,FILETEST3  ,FILETEST4  ,FILETEST5  ,FILETEST6  ,FILETEST7  ,FILETEST8  ,&
                     FILETEST9  ,FILETEST10
 CHARACTER*26 ::     FILE_LOCATION
 CHARACTER*44 ::     FILEGLOBAL
+LOGICAL	     ::     ISPRINT
 
 !-----------------------------------------------------------------|
 !---------------------USER MODIFICLABLE AREA----------------------|
@@ -127,10 +128,29 @@ KETA = EPS**(0.25D0) * NU**(-0.75D0)
 !PRINT *, KE
 !PRINT *, DELTAKEY
 
-!CALL EXIT(IERR)
+!ISPRINT = .FALSE.
+ISPRINT = .TRUE.
 
-
-!PHI, PSI, ALPHA, THETA
+IF (ISPRINT) THEN
+PRINT *, "=================================================="
+PRINT *, "N: ", N
+PRINT *, "Nit: ", ITMAX
+PRINT *, "Lt: ", LT
+PRINT *, "TAU: ", TAU
+PRINT *, "p: ", PDAVBIL
+PRINT *, "VISC: ", NU
+PRINT *, "DT: ", DT
+PRINT *, "TURBKIN: ", KIN
+PRINT *, "URMS: ", URMS
+PRINT *, "ACOEFF: ", ACOEFF
+PRINT *, "BCOEFF: ", BCOEFF
+PRINT *, "Kappa max: ", KEYMAX
+PRINT *, "Kappa e: ", KE
+PRINT *, "Kappa 1: ", KE / PDAVBIL
+PRINT *, "Delta Kappa: ", DELTAKEY
+PRINT *, "Kappa Eta: ", KETA
+PRINT *, "=================================================="
+END IF
 
 ALLOCATE(V(DIVY,DIVZ,3))
 ALLOCATE(PSI(N))
@@ -161,6 +181,41 @@ VEL2_AVERAGE(:) = (/ 0.0D0, 0.0D0, 0.0D0 ,0.0D0, 0.0D0, 0.0D0/)
 VEL3_AVERAGE(:) = (/ 0.0D0, 0.0D0, 0.0D0 /)
 VEL4_AVERAGE(:) = (/ 0.0D0, 0.0D0, 0.0D0 /)
 
+R(1,1) = REYNOLDS(1)
+R(1,2) = REYNOLDS(2)
+R(1,3) = REYNOLDS(4)
+R(2,1) = REYNOLDS(2)
+R(2,2) = REYNOLDS(3)
+R(2,3) = REYNOLDS(5)
+R(3,1) = REYNOLDS(4)
+R(3,2) = REYNOLDS(5)
+R(3,3) = REYNOLDS(6)
+
+! DIVIDE BY TRACE(RIJ) TIMES 3 TO NORMALIZE?
+TRACE = R(1,1) + R(2,2) + R(3,3)
+
+R = 3.0D0*R/TRACE
+
+!CALL DSYEVJ3(R, EVEROT, EIGVAL)
+CALL RS(3,3,R,EIGVAL,1,ROT,TEMP3,TEMP4,IERR)
+
+SQRTEIGVAL = SQRT(EIGVAL)
+ISQRTEIGVAL = 1.0D0 / SQRTEIGVAL
+
+ROTT = TRANSPOSE(ROT)
+
+IF (ISPRINT) THEN
+PRINT *, "Eigenvalues: "
+PRINT *, EIGVAL
+PRINT *, "Rotation matrix: "
+DO I = 1,3
+    WRITE(*,*) ( ROT(I,J), J=1,3)
+END DO
+
+
+
+PRINT *, "=================================================="
+END IF
 
 PRINT *, "TOTAL TIME INTERVAL = ", DT * ITMAX, " [S]"
 
@@ -170,11 +225,11 @@ PRINT *, "TOTAL TIME INTERVAL = ", DT * ITMAX, " [S]"
 
 !PRINT *, "Set RS Tensor"
 
-DO IY= 1,3
-  DO IZ = 1,3
-    R(IY,IZ) = 0
-  END DO
-END DO
+!DO IY= 1,3
+!  DO IZ = 1,3
+!    R(IY,IZ) = 0
+!  END DO
+!END DO
 
 
 !BEGINNING OF TIME ITERATIONS
@@ -243,36 +298,7 @@ END DO
        V(IY,IZ,:) = (/ 0.0D0, 0.0D0, 0.0D0 /)
        VELFLU = 0.0D0
 
-
-	!  |REYNOLDS(1)  REYNOLDS(2)  REYNOLDS(4)|
-	!  |REYNOLDS(2)  REYNOLDS(3)  REYNOLDS(5)|
-	!  |REYNOLDS(4)  REYNOLDS(5)  REYNOLDS(6)|
-
-	R(1,1) = REYNOLDS(1)
-	R(1,2) = REYNOLDS(2)
-	R(1,3) = REYNOLDS(4)
-	R(2,1) = REYNOLDS(2)
-	R(2,2) = REYNOLDS(3)
-	R(2,3) = REYNOLDS(5)
-	R(3,1) = REYNOLDS(4)
-	R(3,2) = REYNOLDS(5)
-	R(3,3) = REYNOLDS(6)
-
-	! DIVIDE BY TRACE(RIJ) TIMES 3 TO NORMALIZE?
-
-	TRACE = R(1,1) + R(2,2) + R(3,3)
-
-	R = 3.0D0*R/TRACE
-
-	!CALL DSYEVJ3(R, EVEROT, EIGVAL)
-	CALL RS(3,3,R,EIGVAL,1,ROT,TEMP3,TEMP4,IERR)
-
-	SQRTEIGVAL = SQRT(EIGVAL)
-	ISQRTEIGVAL = 1.0D0 / SQRTEIGVAL
-
-	ROTT = TRANSPOSE(ROT)
-
-	X_POINT_P = MATMUL(ROTT,X_POINT)
+       X_POINT_P = MATMUL(ROTT,X_POINT)
 
 !------------BEGINNING OF EDDIES ITERATIONS
 
@@ -300,7 +326,7 @@ END DO
 
 	!IF (KNORM < KEYMAX) THEN
 	
-	ENERGY = 1.453D0 * URMS**2.0D0 / KE * ( KNORM / KE)**4.0D0 / &
+	ENERGY = AMP * URMS**2.0D0 / KE * ( KNORM / KE)**4.0D0 / &
 		 (1.0D0 + (KNORM/KE)**2.0D0)**(17.0D0/6.0D0) * &
 		 EXP(-2.0D0 * ( KNORM/KETA )**2.0D0)
  	UCAP = SQRT(ENERGY * DELTAKEY)
