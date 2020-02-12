@@ -23,16 +23,16 @@ DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE ::        DATAVEC, KAP, SIGMA
 DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE ::          K, PHI, PSI, ALPHA, THETA
 DOUBLE PRECISION, DIMENSION(:) ::     X_POINT(3), REYNOLDS(6), TEMP(3), TEMP2(3), TEMP1(3), &
 				      TEMP3(3), TEMP4(3), U(3), SIGMAP(3), VELFLU(3), X_POINT_P(3), &
-				      K_P(3), SIGMA_P(3)
+				      K_P(3), SIGMA_P(3), SQRTEIGVAL(3), ISQRTEIGVAL(3)
 DOUBLE PRECISION :: TMPE,RAND, DELTA, DELTAMIN, KEY, KE, KEYMAX, TAU, ACOEFF, BCOEFF, &
 		    EPS, NU, UCAP, ARGUMENT, DELTAKEY, LT, ENERGY, KETA, TRACE, URMS, KIN, PDAVBIL, &
-		    SCALINGPARAM, AMP
+		    SCALINGPARAM, AMP, KNORM
 REAL :: rand_number
 DOUBLE PRECISION, DIMENSION(:) :: VEL_AVERAGE(3),VEL2_AVERAGE(6),VEL3_AVERAGE(3),&
                                   VEL4_AVERAGE(3),VEL2_AVERAGE_DEF(3),VELMIX_AVERAGE_DEF(3),&
                                   VEL3_AVERAGE_DEF(3),VEL4_AVERAGE_DEF(3), EIGVAL(3), K_DIR(3), &
 				  EPSILO2(3), TMPVEC(3)	
-DOUBLE PRECISION, DIMENSION(:,:) :: R(3,3), EVEROT(3,3), TMPMAT(3,3)
+DOUBLE PRECISION, DIMENSION(:,:) :: R(3,3), ROT(3,3),ROTT(3,3), TMPMAT(3,3)
 INTEGER :: DIVY       ,DIVZ       ,IY         ,IZ         ,II          ,N          ,IT         ,ITMAX     ,&
                     P          ,INDIX      ,POST_PROCESSING, IDXY, IDXZ, KIDX
 INTEGER :: MYRANK,SIZE_MPI,IERR,N_part,nseed, stat = 0
@@ -72,11 +72,11 @@ U = (/ 1.0D0, 0.0D0, 0.0D0 /)  ![M/S]
 !  |REYNOLDS(4)  REYNOLDS(5)  REYNOLDS(6)|
 
 !REYNOLDS = (/ 1.9670D0, 0.4296D0, 1.5472D0, 0.3955D0, -0.5678D0, 1.9727D0 /)  ![M/S]
-!REYNOLDS = (/ 0.75D0, -0.66D0, 3.19D0, 0.0D0, 0.0D0, 1.49D0 /)  ![M/S]
+REYNOLDS = (/ 0.75D0, -0.66D0, 3.19D0, 0.0D0, 0.0D0, 1.49D0 /)  ![M/S]
 !REYNOLDS = (/ 0.75D0, -0.66D0, 3.19D0, 0.33D0, 0.88D0, 1.49D0 /)  ![M/S]
 !REYNOLDS = (/ 7.66D0, 0.66D0, 0.319D0, 0.0D0, 0.0D0, 1.49D0 /)  ![M/S]
 !REYNOLDS = (/ 2.75D0, -0.66D0, 3.19D0, 0.0D0, 0.0D0, 1.49D0 /)  ![M/S]
-REYNOLDS = (/ 7.67D0, -0.66D0, 0.32D0, 0.0D0, 0.0D0, 1.50D0 /)  ![M/S]
+!REYNOLDS = (/ 7.67D0, -0.66D0, 0.32D0, 0.0D0, 0.0D0, 1.50D0 /)  ![M/S]
 
 KIN = 0.5D0 * (REYNOLDS(1) + REYNOLDS(3) + REYNOLDS(6)) 
 
@@ -84,18 +84,18 @@ KIN = 0.5D0 * (REYNOLDS(1) + REYNOLDS(3) + REYNOLDS(6))
 
 PI = 2.0D0*ASIN(1.0D0)
 L = PI
-DIVY = 3 ! 64
-DIVZ = 3 ! 64 
+DIVY = 1 ! 64
+DIVZ = 1 ! 64 
 
 
-IDXY = 2 ! 32
-IDXZ = 2 ! 32
+IDXY = 1 ! 32
+IDXZ = 1 ! 32
 
 
-ITMAX = 10000
+ITMAX = 50000
 N = 150	 ! Modes
 ENNE = N
-P = 10
+P = 5000
 
 ! SETTINGS
 
@@ -120,6 +120,8 @@ DELTAKEY = (KEYMAX - KE/PDAVBIL) / (ENNE - 1.0D0)
 TAU = 0.22D0 !0.2D0 * DELTA / U(1)
 ACOEFF = EXP(-DT / TAU)
 BCOEFF = SQRT(1.0D0 - ACOEFF**2)
+
+KETA = EPS**(0.25D0) * NU**(-0.75D0)
 
 !PRINT *, KEYMAX
 !PRINT *, KE
@@ -187,7 +189,7 @@ DO IT=1,ITMAX
      WRITE(*,*) "ITERATION ", IT, "IN PROGRESS. TIME: ",(IT-1) * DT,' [S]'
   END IF
 
-KEY = KE / 2.0D0
+KEY = KE / PDAVBIL + 0.5D0 * DELTAKEY
 
 DO II=1,N
   PHI(II) = 2.0D0 * PI * GEN_RANDOM_NUMBER(0.0D0)
@@ -233,9 +235,10 @@ END DO
   !     IY = MOD(KIDX-1,DIVY)+1
    !    IZ = (KIDX-1)/DIVY + 1
        !X_POINT = GRID POINT COORDINATES
-       X_POINT = (/ 0.0D0, (IY-1) * L/(DIVY -1) + YMIN, (IZ-1) * L/(DIVZ-1)+ ZMIN /)
+       !X_POINT = (/ 0.0D0, (IY-1) * L/(DIVY -1) + YMIN, (IZ-1) * L/(DIVZ-1)+ ZMIN /)
+       X_POINT = (/0.0D0, 0.5D0*PI, 0.5D0*PI/)
 
-
+       !KETA = EPS**(0.25D0) * NU**(-0.75D0)
 
        V(IY,IZ,:) = (/ 0.0D0, 0.0D0, 0.0D0 /)
        VELFLU = 0.0D0
@@ -262,57 +265,14 @@ END DO
 	R = 3.0D0*R/TRACE
 
 	!CALL DSYEVJ3(R, EVEROT, EIGVAL)
-	CALL RS(3,3,R,EIGVAL,1,EVEROT,TEMP3,TEMP4,IERR)
+	CALL RS(3,3,R,EIGVAL,1,ROT,TEMP3,TEMP4,IERR)
 
+	SQRTEIGVAL = SQRT(EIGVAL)
+	ISQRTEIGVAL = 1.0D0 / SQRTEIGVAL
 
-	!PRINT *, EIGVAL
+	ROTT = TRANSPOSE(ROT)
 
-	!EVEROT(:,1) = -EVEROT(:,1)
-	!PRINT *, EVEROT(:,1)
-	!PRINT *, EVEROT(:,2)
-	!PRINT *, EVEROT(:,3)
-	!CALL EXIT(IERR)
-	! APPLY SOME TRANSFORMATIONS TO MAKE IT CORRECT?!
-
-	IF (.FALSE.) THEN
-
-	TMPMAT = EVEROT
-
-	EVEROT(:,1) = TMPMAT(:,3)
-	EVEROT(:,2) = TMPMAT(:,1)
-	EVEROT(:,3) = TMPMAT(:,2)  
-	
-	TMPVEC = EIGVAL	
-
-	EIGVAL(1) = TMPVEC(3)
-	EIGVAL(2) = TMPVEC(1)
-	EIGVAL(3) = TMPVEC(2)
-
-	EVEROT(1,2) = -EVEROT(1,2)
-	EVEROT(2,1) = -EVEROT(2,1)
-
-	END IF
-
-	!PRINT *, R
-	!PRINT *, EVEROT
-	!PRINT *, EVEROT(:,1)
-	!PRINT *, EVEROT(:,2)
-	!PRINT *, EVEROT(:,3)
-	!PRINT *, EIGVAL
-
-	!CALL EXIT(IERR)
-
-	!! COORDINATE IN PRINCIPAL SYSTEM
-
-        X_POINT_P(1) = EVEROT(1,1) * X_POINT(1) + &
-                       EVEROT(2,1) * X_POINT(2) + &
-                       EVEROT(3,1) * X_POINT(3)
-        X_POINT_P(2) = EVEROT(1,2) * X_POINT(1) + &
-                       EVEROT(2,2) * X_POINT(2) + &
-                       EVEROT(3,2) * X_POINT(3)
-        X_POINT_P(3) = EVEROT(1,3) * X_POINT(1) + &
-                       EVEROT(2,3) * X_POINT(2) + &
-                       EVEROT(3,3) * X_POINT(3)
+	X_POINT_P = MATMUL(ROTT,X_POINT)
 
 !------------BEGINNING OF EDDIES ITERATIONS
 
@@ -322,47 +282,27 @@ END DO
 
 	!K AND SIGMA IN PRINCIPAL SYSTEM
 
-        K_P(1) = EVEROT(1,1) * KAP(1,II) + &
-                 EVEROT(2,1) * KAP(2,II) + &
-                 EVEROT(3,1) * KAP(3,II)
-        K_P(2) = EVEROT(1,2) * KAP(1,II) + &
-                 EVEROT(2,2) * KAP(2,II) + &
-                 EVEROT(3,2) * KAP(3,II)
-        K_P(3) = EVEROT(1,3) * KAP(1,II) + &
-                 EVEROT(2,3) * KAP(2,II) + &
-                 EVEROT(3,3) * KAP(3,II)
+	K_P = MATMUL(ROTT,KAP(:,II))
 
-	SIGMA_P(1) = EVEROT(1,1) * SIGMA(1,II) + &
-                     EVEROT(2,1) * SIGMA(2,II) + &
-                     EVEROT(3,1) * SIGMA(3,II)
-	SIGMA_P(2) = EVEROT(1,2) * SIGMA(1,II) + &
-                     EVEROT(2,2) * SIGMA(2,II) + &
-                     EVEROT(3,2) * SIGMA(3,II)
-	SIGMA_P(3) = EVEROT(1,3) * SIGMA(1,II) + &
-                     EVEROT(2,3) * SIGMA(2,II) + &
-                     EVEROT(3,3) * SIGMA(3,II)
+	KNORM = SQRT(K_P(1)**2.D0 + K_P(2)**2.D0 + K_P(3)**2.D0)
+
+	SIGMA_P = MATMUL(ROTT,SIGMA(:,II))
 
 
 	! NORMALIZE K AND SIGMA
-	K_P(1) = K_P(1)/SQRT(EIGVAL(1))
-	K_P(2) = K_P(2)/SQRT(EIGVAL(2))
-	K_P(3) = K_P(3)/SQRT(EIGVAL(3))
+	K_P = K_P * ISQRTEIGVAL
 
-	SIGMA_P(1) = SIGMA_P(1)*SQRT(EIGVAL(1))
-	SIGMA_P(2) = SIGMA_P(2)*SQRT(EIGVAL(2))
-	SIGMA_P(3) = SIGMA_P(3)*SQRT(EIGVAL(3))
+	SIGMA_P = SIGMA_P * SQRTEIGVAL
 
 	!TMPE = K_P(1) * SIGMA_P(1) + K_P(2) * SIGMA_P(2) + K_P(3) * SIGMA_P(3) 
 
-	!PRINT *, TMPE
+	!KNORM = SQRT(KAP(1,II)**2.D0 + KAP(2,II)**2.D0 + KAP(3,II)**2.D0)
 
-	!KEY = SQRT(
-
-	KETA = EPS**(1.0D0/4.0D0) / NU**(3.0D0/4.0D0)
+	!IF (KNORM < KEYMAX) THEN
 	
-	ENERGY = 1.453D0 * URMS**2.0D0 / KE * ( KEY/ KE)**4.0D0 / &
-		 (1.0D0 + (KEY/KE)**2.0D0)**(17.0D0/6.0D0) * &
-		 EXP(-2.0D0 * ( KEY/KETA )**2.0D0)
+	ENERGY = 1.453D0 * URMS**2.0D0 / KE * ( KNORM / KE)**4.0D0 / &
+		 (1.0D0 + (KNORM/KE)**2.0D0)**(17.0D0/6.0D0) * &
+		 EXP(-2.0D0 * ( KNORM/KETA )**2.0D0)
  	UCAP = SQRT(ENERGY * DELTAKEY)
 
 	!PRINT *, "KEY ", KEY
@@ -371,13 +311,8 @@ END DO
 	!PRINT *, "UN ", UCAP
 
 	KEY = KEY + DELTAKEY
-
-	
-
-	!!
 			
-	ARGUMENT = K_P(1) * X_POINT_P(1) + K_P(2) * X_POINT_P(2) + K_P(3) * X_POINT_P(3) + &
-		   PSI(II)
+	ARGUMENT = DOT_PRODUCT(K_P,X_POINT_P) + PSI(II)
 
 	!IF (IY == 2 .AND. IZ == 2) THEN
 	!TMPE = MEAN
@@ -387,9 +322,9 @@ END DO
 	!PRINT *,SIGMA_P(2)
 	!END IF
 
-	VELFLU(1) = VELFLU(1) + SCALINGPARAM*UCAP * COS(ARGUMENT) * SIGMA_P(1)
-	VELFLU(2) = VELFLU(2) + SCALINGPARAM*UCAP * COS(ARGUMENT) * SIGMA_P(2)
-	VELFLU(3) = VELFLU(3) + SCALINGPARAM*UCAP * COS(ARGUMENT) * SIGMA_P(3)
+	VELFLU = VELFLU + SCALINGPARAM * UCAP * COS(ARGUMENT) * SIGMA_P
+
+	!END IF
 
        END DO
 
@@ -400,26 +335,9 @@ END DO
 	!CALL EXIT(IERR)
 	!END IF
 
-	VELFLU(1) = VELFLU(1) * 2.0D0
-	VELFLU(2) = VELFLU(2) * 2.0D0
-	VELFLU(3) = VELFLU(3) * 2.0D0
+	VELFLU = VELFLU * 2.0D0
 
-
-
-	TEMP(1) = VELFLU(1)
-	TEMP(2) = VELFLU(2)
-	TEMP(3) = VELFLU(3)
-	
-
-        VELFLU(1) = EVEROT(1,1) * TEMP(1) + &
-                    EVEROT(1,2) * TEMP(2) + &
-                    EVEROT(1,3) * TEMP(3)
-        VELFLU(2) = EVEROT(2,1) * TEMP(1) + &
-                    EVEROT(2,2) * TEMP(2) + &
-                    EVEROT(2,3) * TEMP(3)
-        VELFLU(3) = EVEROT(3,1) * TEMP(1) + &
-                    EVEROT(3,2) * TEMP(2) + &
-                    EVEROT(3,3) * TEMP(3)
+	VELFLU = MATMUL(ROT,VELFLU)
 
 !		IF (IY == 2 .AND. IZ == 2) THEN
 !PRINT *, EVEROT
