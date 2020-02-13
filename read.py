@@ -37,7 +37,7 @@ print('UW: ' + str(uw/1))
 print('VW: ' + str(vw/1))
 
 
-isPlot = True
+isPlot = False
 
 if isPlot:
 
