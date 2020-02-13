@@ -4,8 +4,8 @@ objects = MatrixOperations.o SEM_Single.o
 f90comp = gfortran
 switch = -O3
 # Makefile
-SEM_Single: $(objects)
-	$(f90comp) -o SEM_Single $(switch) $(objects)
+SEM_Single: MatrixOperations.o SEM_Single.o
+	$(f90comp) -o SEM_Single $(switch) MatrixOperations.o SEM_Single.o
 DFSEM_Single: MatrixOperations.o DFSEM_Single.o
 	$(f90comp) -o DFSEM_Single $(switch) MatrixOperations.o DFSEM_Single.o
 DAVBIL_Single: MatrixOperations.o DAVBIL_Single.o
@@ -25,9 +25,10 @@ DAVBIL_Single.o: MatrixOperations.mod DAVBIL_Single.f90
 	$(f90comp) -c $(switch) $<
 # Cleaning everything
 clean: 
-	rm $(objects)
+	rm *.dat
+	rm *.mod
 	rm SEM_Single
 	rm DFSEM_Single
 	rm DAVBIL_Single
-	rm *.dat
+	
 # End of the makefile

@@ -29,10 +29,10 @@ uw = uw[1][0]
 vw = np.cov(v_avg,w_avg)
 vw = vw[1][0]
 
-print('UU: ' + str(np.var(u_avg)/0.75))
-print('VV: ' + str(np.var(v_avg)/3.19))
-print('WW: ' + str(np.var(w_avg)/1.49))
-print('UV: ' + str(uv/(-0.66)))
+print('UU: ' + str(np.var(u_avg)/1))
+print('VV: ' + str(np.var(v_avg)/1))
+print('WW: ' + str(np.var(w_avg)/1))
+print('UV: ' + str(uv/(1)))
 print('UW: ' + str(uw/1))
 print('VW: ' + str(vw/1))
 
